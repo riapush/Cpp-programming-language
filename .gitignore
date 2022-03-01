@@ -1,0 +1,10 @@
+
+quadratic/.vs/quadratic/v15/.suo
+*.db
+*.log
+*.obj
+*.tlog
+*.user
+*.pdb
+*.idb
+*.ipch
