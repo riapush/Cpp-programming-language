@@ -221,17 +221,14 @@ vector<unique_ptr<Student>> generateStudents() {
 	return students;
 }
 
-void studentsSolveEqs(const char* filename, vector<unique_ptr<Student>> students, Teacher& teacher) {
+void studentsSolveEqs(const char* filename, vector < unique_ptr < Student>>& students, Teacher& teacher) {
 	std::ifstream file(filename);
 	for (int i = 0; i < count_of_eqs; ++i)
 	{
 		QuadEq eq;
 		file >> eq._a >> eq._b >> eq._c;
 		Answer ans;
-		for (int i = 0; i < count_of_students; ++i)
-		{
-			students.at(i)->sendToTeacher(eq, teacher);
-		}
+		for (int i = 0; i < count_of_students; ++i){ students.at(i)->sendToTeacher(eq, teacher); }
 	}
 	file.close();
 
