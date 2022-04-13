@@ -31,31 +31,6 @@ class QuadEq {
 public:
 	double _a, _b, _c;
 	double _d{ _b * _b - 2 * _a * _c };
-	//QuadEq() : _a(0), _b(0), _c(0) {}
-	//QuadEq(double a, double b, double c) : _a(a), _b(b), _c(c) {}
-	//double getA() const { return _a; }
-	//double getB() const { return _b; }
-	//double getC() const { return _c; }
-
-	//double setA(double a) {
-	//	_a = a;
-	//	_d = _b * _b - 2 * _a * _c;
-	//}
-	//double setB(double b) { 
-	//	_b = b; 
-	//	_d = _b * _b - 2 * _a * _c;
-	//}
-	//double setC(double c) { 
-	//	_c = c; 
-	//	_d = _b * _b - 2 * _a * _c;
-	//}
-
-	//double set(double a, double b, double c) {
-	//	_a = a;
-	//	_b = b;
-	//	_c = c;
-
-	//}
 
 	Answer solve(NumOfRoots& n) {
 		Answer ans;
