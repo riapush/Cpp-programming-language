@@ -1,4 +1,5 @@
 #include <cmath>
+#include <time.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 
@@ -6,46 +7,19 @@ using namespace std;
 using namespace sf;
 
 unsigned int window_width{ 800 }, window_height{ 600 };
-constexpr float ball_size{ 10.f }, ball_velocity{ 7.f };
-constexpr float platform_width{ 80.f }, platform_height{ 10.f }, platform_velocity{ 7.f };
+constexpr float ball_size{ 10.f }, ball_velocity{ 6.f };
+constexpr float platform_width{ 80.f }, platform_height{ 10.f }, platform_velocity{ 6.f };
 constexpr float bonus_width{ 40.f }, bonus_height{10.f}, bonus_velocity{ 6.f };
-constexpr float block_width{ 60.f }, block_height{ 20.f };
+constexpr float block_width{ 60.f }, block_height{ 20.f }, moving_block_velocity{3.f};
 constexpr int block_xcount{ 11 }, block_ycount{ 4 };
 constexpr int color_change{ 60 };
+constexpr float extra_velocity{ 15.f };
+Time bonus_time{ seconds(5.0f) }, extra_ball_time{ seconds(15.0f) };
 
-class Ball {
-public:
-	CircleShape shape;
-	Vector2f velocity{ -ball_velocity, -ball_velocity };
-	int score{ 0 };
-
-	Ball(float x, float y) {
-		shape.setPosition(x, y);
-		shape.setRadius(ball_size);
-		shape.setFillColor(Color::Red);
-		shape.setOrigin(ball_size, ball_size);
-	}
-
-	void update() {
-		shape.move(velocity);
-
-		if (left() < 0) velocity.x = ball_velocity;
-		else if (right() > window_width) velocity.x = -ball_velocity;
-
-		if (top() < 0) velocity.y = ball_velocity;
-		else if (bottom() > window_height) {
-			velocity.y = -ball_velocity;
-			score--;
-		}
-	}
-
-	float x() { return shape.getPosition().x; }
-	float y() { return shape.getPosition().y; }
-	float left() { return x() - shape.getRadius(); }
-	float right() { return x() + shape.getRadius(); }
-	float top() { return y() - shape.getRadius(); }
-	float bottom() { return y() + shape.getRadius(); }
-};
+template <class T1, class T2>
+bool isColliding(T1& a, T2& b) {
+	return a.right() >= b.left() && a.left() <= b.right() && a.bottom() >= b.top() && a.top() <= b.bottom();
+}
 
 class Rectangle {
 public:
@@ -82,17 +56,95 @@ public:
 	}
 };
 
+class Ball {
+	Clock clock;
+public:
+	Time time;
+	CircleShape shape;
 
-template <class T1, class T2>
-bool isColliding(T1& a, T2& b) {
-	return a.right() >= b.left() && a.left() <= b.right() && a.bottom() >= b.top() && a.top() <= b.bottom();
-}
+	Vector2f velocity{ 0, 0 };
+	int score{ 0 };
 
-class Block : virtual public Rectangle {
+	Ball(float x, float y) {
+		int sign = rand() % 2;
+		float x_velocity = (sign) ? ball_velocity : -ball_velocity;
+		sign = rand() % 2;
+		float y_velocity = (sign) ? -ball_velocity : ball_velocity;
+		velocity.x = x_velocity;
+		velocity.y = y_velocity;
+		shape.setPosition(x, y);
+		shape.setRadius(ball_size);
+		shape.setFillColor(Color::Red);
+		shape.setOrigin(ball_size, ball_size);
+		time = clock.restart();
+	}
+
+	void update() {
+		time = clock.getElapsedTime();
+		shape.move(velocity);
+
+		if (left() < 0 || right() > window_width) velocity.x = -velocity.x;
+
+		if (top() < 0) velocity.y = -velocity.y;
+		else if (bottom() > window_height) {
+			velocity.y = -velocity.y;
+			score--;
+		}
+	}
+
+	float x() { return shape.getPosition().x; }
+	float y() { return shape.getPosition().y; }
+	float left() { return x() - shape.getRadius(); }
+	float right() { return x() + shape.getRadius(); }
+	float top() { return y() - shape.getRadius(); }
+	float bottom() { return y() + shape.getRadius(); }
+
+	virtual void checkCollision(Player& player) {
+		if (!isColliding(player, *this)) return;
+
+		velocity.y = -velocity.y;
+	}
+
+	virtual void checkCollision(Ball& other) {
+		if (!isColliding(*this, other)) return;
+		if (x() == other.x()) {
+			velocity.y *= (-1);
+			other.velocity.y *= (-1);
+		}
+		else if (y() == other.y()) {
+			velocity.x *= (-1);
+			other.velocity.x *= (-1);
+		}
+		else {
+			velocity.x *= (-1);
+			velocity.y *= (-1);
+			other.velocity.x *= (-1);
+			other.velocity.y *= (-1);
+		}
+
+
+	}
+
+	Ball operator =(Ball other) {
+		if (this == &other) {
+			return *this;
+		}
+		velocity = other.velocity;
+		score = other.score;
+		shape = other.shape;
+		return *this;
+	}
+};
+
+vector<Ball> balls;
+
+class Block : public Rectangle {
 public:
 	bool destroyed{ false };
 	int health = 2;
 
+
+	Block() { ; }
 	Block(float x, float y) {
 		shape.setPosition(x, y);
 		shape.setSize({ block_width, block_height });
@@ -106,7 +158,7 @@ public:
 		health--;
 		ball.score++;
 		if (!health) destroyed = true;
-		shape.setFillColor({ 255,static_cast<Uint8>(76 + color_change * health),static_cast<Uint8>(48 + color_change * health),255 });
+		shape.setFillColor({ 255,76,48,static_cast<Uint8>(255 - color_change * (2 - health)) });
 
 		float overlapLeft{ ball.right() - this->left() };
 		float overlapRight{ this->right() - ball.left() };
@@ -125,12 +177,14 @@ public:
 			ball.velocity.y = ballFromTop ? -ball_velocity : ball_velocity;
 	}
 
+	virtual void update() { ; }
+	virtual void checkCollision(Player& player) { ; }
 };
 
-class IndestructableBlock :public Block {
+class IndestructibleBlock : public Block {
 public:
 
-	IndestructableBlock(float x, float y) : Block(x, y) { shape.setFillColor({ 52,45,113,255 }); }
+	IndestructibleBlock(float x, float y) : Block(x, y) { shape.setFillColor({ 52,45,113,255 }); }
 
 	void checkCollision(Ball& ball)override {
 		if (!isColliding(*this, ball)) return;
@@ -151,27 +205,93 @@ public:
 		else
 			ball.velocity.y = ballFromTop ? -ball_velocity : ball_velocity;
 	}
+
+	void checkCollision(Player& player)override { Block::checkCollision(player); }
 };
 
-/////////////////////////////////////////////////////////
+class FasteningBlock :public Block {
+	bool fastened{ false };
+	bool x_changed{ false };
+	bool y_changed{ false };
+	Clock clock;
+	Time time;
+
+public:
+	FasteningBlock(float x, float y) :Block(x, y) { ; }
+
+	void checkCollision(Ball& ball)override{
+		if (!isColliding(*this, ball)) { 
+			if (fastened) {
+				time = clock.getElapsedTime();
+				if (time > bonus_time) {
+					if (x_changed) {
+						ball.velocity.x = (ball.velocity.x > 0) ? ball_velocity : -ball_velocity;
+						x_changed = false;
+					}
+					if (y_changed) {
+						ball.velocity.y = (ball.velocity.y > 0) ? ball_velocity : -ball_velocity;
+						y_changed = false;
+					}
+					fastened = false;
+					ball.shape.setFillColor(Color::Red);
+				}
+			}
+			return;
+		}
+
+
+
+		health--;
+		fastened = true;
+		time = clock.restart();
+		ball.score++;
+		if (!health) destroyed = true;
+		shape.setFillColor({ 255,76,48,static_cast<Uint8>(255 - color_change * (2 - health)) });
+
+		float overlapLeft{ ball.right() - this->left() };
+		float overlapRight{ this->right() - ball.left() };
+		float overlapTop{ ball.bottom() - this->top() };
+		float overlapBottom{ this->bottom() - ball.top() };
+
+		bool ballFromLeft{ abs(overlapLeft) < abs(overlapRight) };
+		bool ballFromTop{ abs(overlapTop) < abs(overlapBottom) };
+
+		float minOverlapX{ ballFromLeft ? overlapLeft : overlapRight };
+		float minOverlapY{ ballFromTop ? overlapTop : overlapBottom };
+
+		if (abs(minOverlapX) < abs(minOverlapY)) {
+			ball.velocity.x = ballFromLeft ? -extra_velocity: extra_velocity;
+			x_changed = true;
+		}
+		else {
+			ball.velocity.y = ballFromTop ? -extra_velocity : extra_velocity;
+			y_changed = true;
+		}
+		ball.shape.setFillColor({255,255,255,255});
+	}
+
+	void checkCollision(Player& player) override {Block::checkCollision(player);}
+};
 
 class BonusBlock : public Block {
 
-public:
-	bool activated{ false };
+protected:
+	bool released{ false };
 	Vector2f velocity{ 0,0 };
 
+public:
 	BonusBlock(float x, float y) : Block(x, y) { ; }
 
 	void checkCollision(Ball& ball)override {
 		if (!isColliding(*this, ball)) return;
 
 		health--;
-		if (!health) activated = true;
-		if(!activated) shape.setFillColor({ 255,static_cast<Uint8>(76 + color_change * health),static_cast<Uint8>(48 + color_change * health),255 });
+		ball.score++;
+		if (!health) released = true;
+		if (!released) shape.setFillColor({ 255,76,48,static_cast<Uint8>(255 - color_change * (2 - health)) });
 		else {
-			shape.setSize({ bonus_height, bonus_width });
-			shape.setFillColor({ 147, 250, 165,255 });
+			shape.setSize({ bonus_width, bonus_height });
+			shape.setFillColor({ 216, 250, 8,255 });
 			velocity.y = bonus_velocity;
 		}
 
@@ -192,48 +312,144 @@ public:
 			ball.velocity.y = ballFromTop ? -ball_velocity : ball_velocity;
 	}
 
-	void update() {
+	void update()override{
 		shape.move(velocity);
-		if (this->y() > window_height) { // need to check collision with player and whether we lower than the bottom of window.
-			//destroyed = true;
+		if (this->y() > window_height) {
+			destroyed = true;
 		}
 	}
 
+	void checkCollision(Player& player)override{
+		if (!isColliding(player, *this)) return;
+
+		destroyed = true;
+	}
+
 };
-//////////////////////////////////////////////////////////
 
-void checkCollision(Player& player, Ball& ball) {
-	if (!isColliding(player, ball)) return;
+class MovingBlock :public BonusBlock {
+	bool activated{ false };
+	int moving_block_health = 3;
+public:
+	MovingBlock(float x, float y) :BonusBlock(x, y) { ; }
 
-	ball.velocity.y = -ball_velocity;
+	void checkCollision(Ball& ball) {
+		if (!released) {
+			BonusBlock::checkCollision(ball);
+			return;
+		}
+		if (y() > window_height) {
+			destroyed = true;
+			return;
+		}
+		if (!isColliding(*this, ball)) return;
 
-	if (ball.x() < player.x()) ball.velocity.x = -ball_velocity;
-	else ball.velocity.x = ball_velocity;
-}
+		if (activated) {
+			moving_block_health--;
+			ball.score++;
+			if (!moving_block_health) destroyed = true;
+			shape.setFillColor({ 216,250,8,static_cast<Uint8>(255 - color_change * (3 - moving_block_health)) });
 
-void checkCollision(Player& player, BonusBlock& bonus_block) {
-	if (!isColliding(player, bonus_block)) return;
+			float overlapLeft{ ball.right() - this->left() };
+			float overlapRight{ this->right() - ball.left() };
+			float overlapTop{ ball.bottom() - this->top() };
+			float overlapBottom{ this->bottom() - ball.top() };
 
-	if (bonus_block.x() < player.x()) bonus_block.velocity.x = -ball_velocity;
-	else bonus_block.velocity.x = ball_velocity;
+			bool ballFromLeft{ abs(overlapLeft) < abs(overlapRight) };
+			bool ballFromTop{ abs(overlapTop) < abs(overlapBottom) };
 
-	bonus_block.destroyed = true;
+			float minOverlapX{ ballFromLeft ? overlapLeft : overlapRight };
+			float minOverlapY{ ballFromTop ? overlapTop : overlapBottom };
+
+			if (abs(minOverlapX) < abs(minOverlapY))
+				ball.velocity.x = ballFromLeft ? -ball_velocity : ball_velocity;
+			else
+				ball.velocity.y = ballFromTop ? -ball_velocity : ball_velocity;
+		}
+	}
+
+	void checkCollision(Player& player)override {
+		if (!isColliding(player, *this)) {
+			if (activated && !moving_block_health) {
+				destroyed = true;
+			}
+			return;
+		}
+		activated = true;
+		velocity.x = moving_block_velocity;
+		velocity.y = 0;
+
+		shape.setPosition(static_cast<float>(window_width / 2), static_cast<float>(window_height / 2));
+		shape.setSize({ block_width, block_height });
+	}
+
+	void update()override {
+		shape.move(velocity);
+		if (left() < 0) velocity.x = moving_block_velocity;
+		else if (right() > window_width) velocity.x = -moving_block_velocity;
+	}
+};
+
+class ExtraBallBlock :public BonusBlock {
+
+public:
+	ExtraBallBlock(float x, float y) :BonusBlock(x, y) { ; }
+
+	void checkCollision(Ball& ball)override { BonusBlock::checkCollision(ball); }
+	void update()override { BonusBlock::update(); }
+
+	void checkCollision(Player& player)override {
+		if (!isColliding(player, *this)) return;
+
+		destroyed = true;
+		balls.emplace_back(static_cast<float>(window_width / 2), static_cast<float>(window_height / 2));
+
+	}
+};
+
+vector<Block> generateBlocks() {
+	vector<Block> blocks;
+	for (int x{ 0 }; x < block_xcount; ++x) {
+		for (int y{ 0 }; y < block_ycount; ++y) {
+			int situation = rand() % 5;
+			switch (situation) {
+			case 0:
+				blocks.push_back(Block((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
+				break;
+			case 1:
+				blocks.push_back(IndestructibleBlock((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
+				break;
+			case 2:
+				blocks.push_back(FasteningBlock((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
+				break;
+
+			case 3:
+				blocks.push_back(MovingBlock((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
+				break;
+			case 4:
+				blocks.push_back(ExtraBallBlock((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
+				break;
+			}
+		}
+	}
+	return blocks;
 }
 
 int main() {
-	Ball ball{ static_cast<float>(window_width / 2), static_cast<float>(window_height / 2) };
-	Player paddle{ static_cast<float>(window_width / 2), static_cast<float>(window_height - 50) };
-	vector<Block> blocks;
+	srand(static_cast<unsigned int>(time(0)));
+	balls.emplace_back( static_cast<float>(window_width / 2), static_cast<float>(window_height / 2));
+	Player player{ static_cast<float>(window_width / 2), static_cast<float>(window_height - 50) };
+	vector<Block> blocks = generateBlocks();
 
-	for (int x{ 0 }; x < block_xcount; ++x)
-		for (int y{ 0 }; y < block_ycount; ++y)
-			blocks.emplace_back((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3));
+	//for (int x{ 0 }; x < block_xcount; ++x)
+	//	for (int y{ 0 }; y < block_ycount; ++y)
+	//		blocks.emplace_back((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3));
 
 	RenderWindow window{ {window_width, window_height}, "Arkanoid Game" };
 	window.setFramerateLimit(60);
 
 	Font font;
-	Text score_table;
+	Text score_table, esc;
 	if (!font.loadFromFile("PixelEmulator-xq08.ttf")) { /* raise error*/ }
 
 	while (true) {
@@ -242,20 +458,50 @@ int main() {
 		if (Keyboard::isKeyPressed(Keyboard::Key::Escape)) break;
 
 		score_table.setFont(font);
-		string str_score = to_string(ball.score);
-		score_table.setString("score: "+ str_score);
+		score_table.setString("score: "+ to_string(balls[0].score));
 		score_table.setCharacterSize(24);
 		score_table.setPosition(0, 0);
+		esc.setFont(font);
+		esc.setCharacterSize(15);
+		esc.setPosition(7, static_cast<float>(window_height - 20));
+		esc.setString("Press Esc for exit");
+		esc.setFillColor({ 255,255,255,150 });
 
-		ball.update();
-		paddle.update();
-		checkCollision(paddle, ball);
-		for (auto& block : blocks) block.checkCollision(ball);
-		blocks.erase(remove_if(begin(blocks), end(blocks), [](const Block& mBrick) { return mBrick.destroyed; }), end(blocks));
+		for (auto& ball : balls) {
+			ball.update();
+			ball.checkCollision(player);
+		}
+		for (int i = 1; i < static_cast<int>(balls.size()); ++i) {
+			if (balls.size() == 1) break;
+			for (int j = 0; j < static_cast<int>(balls.size()); ++j) {
+				if (i == j) continue;
+				balls[i].checkCollision(balls[j]);
+			}
+			if (balls[i].time > extra_ball_time) {
+				balls.erase(next(balls.begin(), i));
+				i--;
+			}
+		}
+		for (int i = 0; i < (int)balls.size(); ++i) {
+			if (balls.size() == 1) break;
+			for (int j = 0; j < (int)balls.size(); ++j) {
+				if (i == j) continue;
+				balls[i].checkCollision(balls[j]);
+			}
+		}
+		player.update();
+		for (auto& block : blocks) {
+			for (auto& ball : balls) block.checkCollision(ball);
+			block.checkCollision(player);
+			block.update();
+		}
+
+		blocks.erase(remove_if(begin(blocks), end(blocks), [](const Block& block) { return block.destroyed; }), end(blocks));
 
 		window.draw(score_table);
-		window.draw(ball.shape);
-		window.draw(paddle.shape);
+		window.draw(esc);
+		for (auto& ball : balls) window.draw(ball.shape);
+		window.draw(player.shape);
 		for (auto& block : blocks) window.draw(block.shape);
 		window.display();
 	}
