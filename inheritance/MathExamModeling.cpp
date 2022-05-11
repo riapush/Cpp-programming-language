@@ -30,10 +30,10 @@ class QuadEq {
 
 public:
 	double _a, _b, _c;
-	double _d{ _b * _b - 2 * _a * _c };
 
 	Answer solve(NumOfRoots& n) {
 		Answer ans;
+		double _d{ _b*_b - 4 * _a*_c };
 		if (_d >= 0) {
 			double* x{ new double[2] };
 			ans.x1 = (-_b + sqrt(_d)) / (2 * _a);
@@ -77,7 +77,7 @@ public:
 	void checkLetters() {
 		while (!letters.empty()) {
 			bool student_in_result = false;
-			for (int i = 0; i < results.size(); ++i)
+			for (size_t i = 0; i < results.size(); ++i)
 			{
 				if (results.at(i).name == letters.front().name)
 				{
@@ -97,7 +97,7 @@ public:
 	}
 
 	void postResults() {
-		for (int i = 0; i < results.size(); ++i)
+		for (size_t i = 0; i < results.size(); ++i)
 		{
 			cout << results.at(i).name << " " << results.at(i).successes << endl;
 		}
