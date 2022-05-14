@@ -82,7 +82,6 @@ public:
 	void update() {
 		time = clock.getElapsedTime();
 		if (time > bonus_time) {
-			shape.setFillColor(Color::Yellow);
 			destroyed = true;
 		}
 		shape.move(velocity);
@@ -127,15 +126,6 @@ public:
 		}
 
 
-	}
-
-	Ball operator =(Ball other) {
-		if (this == &other) {
-			return *this;
-		}
-		velocity = other.velocity;
-		shape = other.shape;
-		return *this;
 	}
 };
 
@@ -394,7 +384,7 @@ vector<unique_ptr<Block>> generateBlocks() {
 	vector<unique_ptr<Block>> blocks;
 	for (int x{ 0 }; x < block_xcount; ++x) {
 		for (int y{ 0 }; y < block_ycount; ++y) {
-			int situation = rand() % 10;
+			int situation = rand() % 8;
 			unique_ptr<Block> block;
 			switch (situation) {
 			case 0:
@@ -421,12 +411,6 @@ vector<unique_ptr<Block>> generateBlocks() {
 			case 7:
 				block = move(make_unique<Block>((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
 				break;
-			case 8:
-				block = move(make_unique<Block>((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
-				break;
-			case 9:
-				block = move(make_unique<Block>((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
-				break;
 			}
 			blocks.push_back(move(block));
 		}
@@ -434,22 +418,37 @@ vector<unique_ptr<Block>> generateBlocks() {
 	return blocks;
 }
 
-vector<unique_ptr<Block>> generateBlocks1() {
-	vector<unique_ptr<Block>> blocks;
-	for (int x{ 0 }; x < block_xcount; ++x) {
-		for (int y{ 0 }; y < block_ycount; ++y) {
-			unique_ptr<Block> block = move(make_unique<ExtraBallBlock>((x + 1) * (block_width + 3) + 22, (y + 2) * (block_height + 3)));
-			blocks.push_back(move(block));
-		}
+class Game {
+	unsigned int window_width{ 800 }, window_height{ 600 };
+	float ball_size{ 8.f }, ball_velocity{ 4.f };
+	float platform_width{ 80.f }, platform_height{ 10.f }, platform_velocity{ 6.f };
+	float bonus_width{ 40.f }, bonus_height{ 10.f }, bonus_velocity{ 6.f };
+	float block_width{ 60.f }, block_height{ 35.f }, moving_block_velocity{ 3.f };
+	int block_xcount{ 11 }, block_ycount{ 4 };
+	int color_change{ 60 };
+	float extra_velocity{ 7.f };
+	Time bonus_time{ seconds(5.0f) };
+	int score{ 0 };
+	Font font;
+	Text score_table, esc;
+	vector<Ball> balls;
+
+	Game() {
+		srand(static_cast<unsigned int>(time(0)));
+		balls.emplace_back(static_cast<float>(window_width / 2), static_cast<float>(window_height / 2));
 	}
-	return blocks;
-}
+	Player player{ static_cast<float>(window_width / 2), static_cast<float>(window_height - 50) };
+	vector<unique_ptr<Block>> blocks = generateBlocks();
+
+
+};
 
 int main() {
 	srand(static_cast<unsigned int>(time(0)));
 	balls.emplace_back(static_cast<float>(window_width / 2), static_cast<float>(window_height / 2));
 	Player player{ static_cast<float>(window_width / 2), static_cast<float>(window_height - 50) };
-	vector<unique_ptr<Block>> blocks = generateBlocks1();
+	vector<unique_ptr<Block>> blocks = generateBlocks();
+
 
 	RenderWindow window{ {window_width, window_height}, "Arkanoid Game" };
 	window.setFramerateLimit(60);
@@ -501,5 +500,7 @@ int main() {
 		window.display();
 	}
 
+	/*Game* game = new Game();
+	delete game;*/
 	return 0;
 }
