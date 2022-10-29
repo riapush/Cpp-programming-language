@@ -1,4 +1,5 @@
 #include "Calc.h"
+#include "Operations.h"
 
 std::string Calculator::postfix(std::string exp) {
 	std::string res;
@@ -16,13 +17,6 @@ std::string Calculator::postfix(std::string exp) {
 
 	std::cout << exp << std::endl;
 
-	std::map<char, size_t> map; // map of weights of symbols
-	map.insert(std::make_pair('^', 4));
-	map.insert(std::make_pair('*', 3));
-	map.insert(std::make_pair('/', 3));
-	map.insert(std::make_pair('+', 2));
-	map.insert(std::make_pair('-', 2));
-	map.insert(std::make_pair('(', 1));
 	std::stack<char> stack;
 	for (auto c : exp) {
 		if (!isdigit(c) && ('.' != c)) {
@@ -38,7 +32,7 @@ std::string Calculator::postfix(std::string exp) {
 			else if ('(' == c) {
 				stack.push(c);
 			}
-			else if (stack.empty() || (map[stack.top()] < map[c])) {
+			else if (stack.empty() || (Operations::getOperations().priority(stack.top()) < Operations::getOperations().priority(c))) {
 				stack.push(c);
 			}
 			else {
@@ -46,7 +40,7 @@ std::string Calculator::postfix(std::string exp) {
 					res += stack.top();
 					res += ' ';
 					stack.pop();
-				} while (!(stack.empty() || (map[stack.top()] < map[c])));
+				} while (!(stack.empty() || (Operations::getOperations().priority(stack.top()) < Operations::getOperations().priority(c))));
 				stack.push(c);
 			}
 		}
@@ -89,9 +83,11 @@ double Calculator::calculate(std::string exp) {
 			if (!isdigit(exp[i]) && exp[i] != '^' && exp[i] != '-' && exp[i] != '+' && exp[i] != '*' && exp[i] != '/') {
 				throw std::invalid_argument("received non-number argument or invalid operation");
 			}
-			double num = std::atof(curr_num.c_str());
-			numbers.push(num);
-			curr_num = "";
+			if (!(curr_num == "")) {
+				double num = std::atof(curr_num.c_str());
+				numbers.push(num);
+				curr_num = "";
+			}
 			try {
 				double a = numbers.top();
 				numbers.pop();
