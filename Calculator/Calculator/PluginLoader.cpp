@@ -7,7 +7,7 @@ PluginLoader::PluginLoader() {
 void PluginLoader::loadDll() {
 	WIN32_FIND_DATAA find;
 
-	HANDLE const hFind = FindFirstFileA((path + std::string("*.dll")).c_str(), &find);
+	HANDLE const hFind = FindFirstFileA((path+std::string("*.dll")).c_str(), &find);
 
 	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
@@ -18,17 +18,20 @@ void PluginLoader::loadDll() {
 		FindClose(hFind);
 	}
 	else { ;
-        //throw std::exception();
+        throw std::exception();
     }
+    std::cout << "\n";
 }
 
 void PluginLoader::addFunction(std::string const& name) {
-	HMODULE hm = LoadLibraryA((path + name).c_str());
+	HMODULE hm = LoadLibraryA((path+name).c_str());
 
 	if (!hm)
 		throw std::exception();
 
 	std::string function = name.substr(0, name.find(".dll"));
+    function.erase(0,3);
+    std::cout << ", " << function;
 
 	unary ufunc = (unary)GetProcAddress(hm, "unary");
 

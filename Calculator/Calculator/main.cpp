@@ -2,9 +2,9 @@
 
 int main()
 {
+    std::cout << "Available operations: +, -, *, /, ^";
 	Calculator calc;
 	std::string expression;
-	std::cout << "Available operations: +, -, *, /, ^" << std::endl;
 	std::cout << "Enter expression(enter z to escape):" << std::endl;
 	std::getline(std::cin, expression);
 	while (expression != "z") {

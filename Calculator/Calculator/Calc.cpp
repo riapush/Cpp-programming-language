@@ -23,8 +23,6 @@ std::string Calculator::postfix(std::string exp) {
 		}
 	}
 
-	std::cout << exp << std::endl;
-
 	std::stack<std::string> stack;
 	for (auto c : exp) {
 		if (!isdigit(c) && ('.' != c)) {
@@ -67,7 +65,6 @@ std::string Calculator::postfix(std::string exp) {
 		res += ' ';
 		stack.pop();
 	}
-	std::cout << "Postfix res:" << res << std::endl; // result of reverse polish notation
 
 	return res;
 }
@@ -132,10 +129,8 @@ double Calculator::calculate(std::string exp) {
 					}
 					else if (pl.unary_contains(cur_op)) {
                         curr_num = "";
-                        while (isdigit(exp[i]) || exp[i] == ' ' || exp[i] == '.') {
-                            if(exp[i] == ' '){
-                                continue;
-                            }
+                        i++;
+                        while (exp[i] != ' ') {
                             curr_num += exp[i];
                             i++;
                         }

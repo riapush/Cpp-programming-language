@@ -7,7 +7,7 @@ using unary = double(*)(double);
 using binary = double(*)(double, double);
 
 class PluginLoader {
-	std::string path = "plugins/";
+	std::string path = "D:\\Git\\GitHub\\C---programming-language\\Calculator\\Calculator\\plugins\\";
 	void loadDll();
 	std::map<std::string, binary> binary_map;
 	std::map<std::string, unary> unary_map;
