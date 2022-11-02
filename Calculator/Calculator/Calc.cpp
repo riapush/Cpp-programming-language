@@ -1,5 +1,13 @@
 #include "Calc.h"
-#include "Operations.h"
+
+
+std::string Calculator::charToStr(char c) {
+	std::stringstream stringstream;
+	std::string str;
+	stringstream << c;
+	stringstream >> str;
+	return str;
+}
 
 std::string Calculator::postfix(std::string exp) {
 	std::string res;
@@ -17,12 +25,18 @@ std::string Calculator::postfix(std::string exp) {
 
 	std::cout << exp << std::endl;
 
-	std::stack<char> stack;
+	std::stack<std::string> stack;
 	for (auto c : exp) {
 		if (!isdigit(c) && ('.' != c)) {
-			res += ' ';
+			if (!isalpha(c)) {
+				res += ' ';
+			}
+			else {
+				res += c;
+				continue;
+			}
 			if (')' == c) {
-				while (stack.top() != '(') {
+				while (stack.top() != "(") {
 					res += stack.top();
 					stack.pop();
 					res += ' ';
@@ -30,18 +44,18 @@ std::string Calculator::postfix(std::string exp) {
 				stack.pop();
 			}
 			else if ('(' == c) {
-				stack.push(c);
+				stack.push(charToStr(c));
 			}
-			else if (stack.empty() || (Operations::getOperations().priority(stack.top()) < Operations::getOperations().priority(c))) {
-				stack.push(c);
+			else if (stack.empty() || ((Operations::getOperations().contains(charToStr(c))) && (Operations::getOperations().priority(stack.top()) < Operations::getOperations().priority(charToStr(c))))) {
+				stack.push(charToStr(c));
 			}
 			else {
 				do {
 					res += stack.top();
 					res += ' ';
 					stack.pop();
-				} while (!(stack.empty() || (Operations::getOperations().priority(stack.top()) < Operations::getOperations().priority(c))));
-				stack.push(c);
+				} while (!(stack.empty() || (Operations::getOperations().priority(stack.top()) < Operations::getOperations().priority(charToStr(c)))));
+				stack.push(charToStr(c));
 			}
 		}
 		else {
@@ -57,11 +71,6 @@ std::string Calculator::postfix(std::string exp) {
 
 	return res;
 }
-
-void Calculator::add_plugins() {
-	// this func should add .dll but author of code kinda sucks in cpp
-}
-Calculator::~Calculator() = default;
 
 double Calculator::calculate(std::string exp) {
 	exp = postfix(exp);
@@ -80,44 +89,75 @@ double Calculator::calculate(std::string exp) {
 			curr_num.push_back(exp[i]);
 		}
 		else {
-			if (!isdigit(exp[i]) && exp[i] != '^' && exp[i] != '-' && exp[i] != '+' && exp[i] != '*' && exp[i] != '/') {
-				throw std::invalid_argument("received non-number argument or invalid operation");
-			}
 			if (!(curr_num == "")) {
 				double num = std::atof(curr_num.c_str());
 				numbers.push(num);
 				curr_num = "";
 			}
 			try {
-				double a = numbers.top();
-				numbers.pop();
-				double b = numbers.top();
-				numbers.pop();
-				switch (exp[i]) {
-				case '+':
-					numbers.push(b + a);
-					break;
-				case'-':
-					numbers.push(b - a);
-					break;
-				case '*':
-					numbers.push(b * a);
-					break;
-				case'/':
-					numbers.push(b / a);
-					break;
-				case'^':
-					numbers.push(pow(b, a));
+                double a,b;
+				if (Operations::getOperations().contains(charToStr(exp[i]))) {
+                    a = numbers.top();
+                    numbers.pop();
+                    b = 0;
+					b = numbers.top();
+					numbers.pop();
+					numbers.push(Operations::getOperations().operation(a, b, charToStr(exp[i])));
+				}
+				else {
+					std::string cur_op = "";
+					if (isalpha(exp[i])) {
+						while (isalpha(exp[i])) {
+							cur_op += exp[i];
+							i++;
+						}
+					}
+					if (pl.binary_contains(cur_op)) {
+                        curr_num = "";
+                        while (isdigit(exp[i]) || exp[i] == ' ' || exp[i] == '.') {
+                            if(exp[i] == ' '){
+                                continue;
+                            }
+                            curr_num += exp[i];
+                            i++;
+                        }
+                        double num = std::atof(curr_num.c_str());
+                        numbers.push(num);
+                        curr_num = "";
+                        a = numbers.top();
+                        numbers.pop();
+						b = numbers.top();
+						numbers.pop();
+						numbers.push(pl.operation(a, b, cur_op));
+					}
+					else if (pl.unary_contains(cur_op)) {
+                        curr_num = "";
+                        while (isdigit(exp[i]) || exp[i] == ' ' || exp[i] == '.') {
+                            if(exp[i] == ' '){
+                                continue;
+                            }
+                            curr_num += exp[i];
+                            i++;
+                        }
+                        double num = std::atof(curr_num.c_str());
+                        numbers.push(num);
+                        curr_num = "";
+                        a = numbers.top();
+                        numbers.pop();
+                        b = 0;
+						numbers.push(pl.operation(a, b, cur_op));
+					}
+					else {
+						throw std::exception();
+					}
 				}
 			}
 			catch (std::exception& e) {
-				e.what();
+				std::cout << e.what();
 			}
 		}
 	}
 	return numbers.top();
 }
 
-Calculator::Calculator() {
-	add_plugins();
-}
+Calculator::Calculator()=default;

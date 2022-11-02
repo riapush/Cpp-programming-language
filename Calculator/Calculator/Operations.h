@@ -13,7 +13,7 @@
 
 using mapOperators = std::map<std::string, std::function<double(double, double)>>;
 
-using PriorityMap = std::map<char, size_t>;
+using PriorityMap = std::map<std::string, size_t>;
 
 class Operations {
 	Operations();
@@ -29,7 +29,9 @@ public:
 
 	static Operations& getOperations();
 
-	int const priority(char const& operationName);
+	int const priority(std::string const& operationName);
 
 	double operation(double const& a, double const& b, std::string const& name);
+
+	bool contains(std::string const& name);
 };
